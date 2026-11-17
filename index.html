@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#121220">
+<title>Pulsador</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#121220;color:#fff;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+ overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
+.pant{position:fixed;inset:0;display:none;flex-direction:column;padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom))}
+.pant.on{display:flex}
+h1{font-size:28px;text-align:center;margin:8px 0 18px}
+#lista{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
+.jug{border:0;border-radius:18px;padding:20px;font-size:26px;font-weight:800;color:#fff;text-align:left;
+ display:flex;justify-content:space-between;align-items:center;box-shadow:0 6px 0 rgba(0,0,0,.35)}
+.jug small{font-size:14px;font-weight:600;opacity:.85}
+.arriba{display:flex;justify-content:space-between;align-items:center;font-size:18px;margin-bottom:12px}
+.arriba button{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:999px;padding:8px 14px;font-size:15px}
+#boton{flex:1;border:0;border-radius:36px;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;
+ gap:14px;box-shadow:0 14px 0 rgba(0,0,0,.4);transition:transform .06s,filter .2s,opacity .2s;text-align:center;padding:16px}
+#boton .nom{font-size:min(15vw,90px);font-weight:900;line-height:1;word-break:break-word}
+#boton .txt{font-size:min(9vw,52px);font-weight:900}
+#boton.espera,#boton.otro{filter:saturate(.25) brightness(.55)}
+#boton.bloqueado{filter:grayscale(1) brightness(.35)}
+#boton.ya{animation:late .5s infinite alternate}
+#boton.ganas{filter:brightness(1.15)}
+#boton.apretado{transform:translateY(10px);box-shadow:0 4px 0 rgba(0,0,0,.4)}
+@keyframes late{from{transform:scale(1)}to{transform:scale(1.025)}}
+#aviso{position:fixed;left:0;right:0;bottom:0;padding:12px;text-align:center;font-size:17px;background:#b3261e;display:none}
+#ptit{font-size:22px;font-weight:800;text-align:center;margin:4px 0 14px;line-height:1.25}
+#popts{flex:1;display:flex;flex-direction:column;gap:12px}
+.op{flex:1;border:0;border-radius:22px;color:#fff;font-size:min(6vw,30px);font-weight:900;display:flex;align-items:center;
+ gap:14px;padding:12px 18px;text-align:left;box-shadow:0 8px 0 rgba(0,0,0,.35);transition:transform .06s}
+.op b{flex:none;width:1.7em;height:1.7em;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center}
+.op:active{transform:translateY(5px)}
+.op.elegida{outline:5px solid #fff}
+.op .num{margin-left:auto;font-size:1.3em;background:#fff;color:#121220;width:1.6em;height:1.6em;border-radius:50%;
+ display:flex;align-items:center;justify-content:center}
+#pfila{display:flex;gap:12px;margin-top:12px}
+#pfila button{flex:1;border:0;border-radius:999px;padding:16px;font-size:22px;font-weight:900}
+#penv{flex:1;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:16px}
+#penv .gr{font-size:min(16vw,96px)}
+#penv p{font-size:24px;font-weight:800;line-height:1.3;white-space:pre-line}
+#aviso.on{display:block}
+</style></head>
+<body>
+<div id="elegir" class="pant on"><h1>¿Quién eres?</h1><p id="nota" style="text-align:center;opacity:.8;margin:-8px 0 12px"></p><div id="lista"><p style="text-align:center;opacity:.7">Conectando…</p></div></div>
+<div id="pulsar" class="pant">
+ <div class="arriba"><span id="yo"></span><button id="cambiar">Cambiar de jugador</button></div>
+ <button id="boton" class="espera"><span class="nom" id="bnom"></span><span class="txt" id="btxt">Espera…</span></button>
+</div>
+<div id="preg" class="pant">
+ <div class="arriba"><span id="yo2"></span><span id="pque" style="opacity:.8"></span></div>
+ <div id="ptit"></div>
+ <div id="popts"></div>
+ <div id="pfila" style="display:none"><button id="pborrar" style="background:#3a3a55;color:#fff">Borrar</button>
+  <button id="penviar" style="background:#ffd23f;color:#121220">Enviar</button></div>
+ <div id="penv"><div class="gr" id="pgr">✓</div><p id="ptx">¡Respuesta enviada!</p></div>
+</div>
+<div id="aviso">Sin conexión con la tablet. Reconectando…</div>
+<script>
+(function(){
+var PUERTO_WS="0";
+// Por internet (página en GitHub): {url, clave}. En la wifi de casa vale null.
+var NUBE={"clave":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhZndqdmlvZW1qb2JoZmRydGh0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ4OTA3NDMsImV4cCI6MjExMDQ2Njc0M30.nrD6N0sWZgaHsLUcMS4k5ZUiGODl4aCxgcdk8O0D1Ws","url":"https://gafwjvioemjobhfdrtht.supabase.co"};
+var SALA=(location.search.match(/[?&]sala=(\d+)/)||[])[1]||"";
+var ID="";try{ID=localStorage.getItem("movil_id")||""}catch(e){}
+if(!ID){ID=Math.random().toString(36).slice(2,10);try{localStorage.setItem("movil_id",ID)}catch(e){}}
+// Imita un WebSocket, pero hablando con la sala de Supabase Realtime.
+function NubeWS(){
+ var o={readyState:0,onopen:null,onmessage:null,onclose:null,onerror:null},ref=1,hb=null,T="realtime:tugrannoche-"+SALA;
+ var s=new WebSocket(NUBE.url.replace("https://","wss://")+"/realtime/v1/websocket?apikey="+NUBE.clave+"&vsn=1.0.0");
+ function px(ev,pl){var m={topic:T,event:ev,payload:pl,ref:String(ref++),join_ref:"1"};s.send(JSON.stringify(m))}
+ s.onopen=function(){px("phx_join",{config:{broadcast:{self:false,ack:false},presence:{key:""},private:false},access_token:NUBE.clave});
+  hb=setInterval(function(){try{s.send(JSON.stringify({topic:"phoenix",event:"heartbeat",payload:{},ref:String(ref++)}))}catch(e){}},25000)};
+ s.onmessage=function(e){var m;try{m=JSON.parse(e.data)}catch(x){return}
+  if(m.event==="phx_reply"&&m.ref==="1"){if(m.payload&&m.payload.status==="ok"){o.readyState=1;o.send(JSON.stringify({t:"hola"}));if(o.onopen)o.onopen()}else{s.close()}}
+  else if(m.event==="broadcast"&&m.payload&&m.payload.event==="tele"){var p=m.payload.payload;
+   if(p&&(p.para===ID||p.para==="*")&&o.onmessage)o.onmessage({data:JSON.stringify(p.msg)})}
+  else if(m.event==="phx_error"||m.event==="phx_close"){s.close()}};
+ s.onclose=function(){clearInterval(hb);o.readyState=3;if(o.onclose)o.onclose()};
+ s.onerror=function(){if(o.onerror)o.onerror()};
+ o.send=function(t){if(o.readyState===1)px("broadcast",{type:"broadcast",event:"movil",payload:{de:ID,msg:JSON.parse(t)}})};
+ o.close=function(){if(o.readyState===1){try{o.send(JSON.stringify({t:"adios"}))}catch(e){}}o.readyState=2;s.close()};
+ return o}
+function pedirSala(){
+ $("lista").innerHTML='<p style="text-align:center">Escribe el código que sale en la tele:</p>'+
+  '<input id="csala" inputmode="numeric" maxlength="6" style="font-size:40px;width:100%;text-align:center;padding:12px;border-radius:16px;border:0;margin:8px 0">'+
+  '<button id="bsala" class="jug" style="background:#f2a900"><span>Entrar</span></button>';
+ $("bsala").onclick=function(){var v=$("csala").value.replace(/\D/g,"");if(v.length<4)return;SALA=v;
+  try{history.replaceState(null,"","?sala="+v)}catch(e){}$("lista").innerHTML='<p style="text-align:center;opacity:.7">Conectando…</p>';conectar()}}
+var ws=null,desde=0,yo=null,color="#888",estado="espera",ronda=0,ultimo=Date.now(),reintento=null,latido=null;
+try{yo=localStorage.getItem("pulsador_nombre")}catch(e){}
+var $=function(i){return document.getElementById(i)};
+function ver(p){$("elegir").classList.toggle("on",p==="elegir");$("pulsar").classList.toggle("on",p==="pulsar");
+ $("preg").classList.toggle("on",p==="preg")}
+var preg=null,orden=[],COLS=["#e8562a","#378add","#1d9e75","#f2a900","#8b5cf6","#d4537e"],LET="ABCDEF";
+function pintarPregunta(m){
+ preg=m;orden=[];$("yo2").textContent=yo;$("pque").textContent=m.prueba||"";$("ptit").textContent=m.titulo||"";
+ var c=$("popts");c.innerHTML="";$("pfila").style.display=m.tipo==="ordenar"?"flex":"none";
+ m.opciones.forEach(function(t,k){var b=document.createElement("button");b.className="op";
+  b.style.background=(m.colores&&m.colores[k])||COLS[k%COLS.length];
+  b.innerHTML="<b></b><span></span>";b.firstChild.textContent=LET[k];b.lastChild.textContent=t;
+  b.onclick=function(){elegir(k,b)};c.appendChild(b)});
+ if(m.ya)enviada("¡Respuesta enviada!","Espera a que se descubran todas");
+ else{$("popts").style.display="flex";$("penv").style.display="none"}
+ ver("preg");if(navigator.vibrate)navigator.vibrate(60);
+}
+function elegir(k,b){
+ if(!preg)return;
+ if(preg.tipo==="ordenar"){
+  if(orden.indexOf(k)>=0)return;orden.push(k);b.classList.add("elegida");
+  var n=document.createElement("span");n.className="num";n.textContent=orden.length;b.appendChild(n);return}
+ mandar({t:"respuesta",id:preg.id,r:String(k)});enviada("¡Respuesta enviada!","Espera a que se descubran todas");
+}
+function enviada(g,t){$("popts").style.display="none";$("pfila").style.display="none";
+ $("penv").style.display="flex";$("pgr").textContent=g==="¡Respuesta enviada!"?"✓":g;$("ptx").textContent=t}
+$("pborrar").onclick=function(){if(preg)pintarPregunta(preg)};
+$("penviar").onclick=function(){if(!preg||orden.length<preg.opciones.length)return;
+ mandar({t:"respuesta",id:preg.id,r:orden.map(function(k){return LET[k]}).join("")});
+ enviada("¡Respuesta enviada!","Espera a que se descubran todas")};
+function mandar(o){if(ws&&ws.readyState===1)ws.send(JSON.stringify(o))}
+var intentos=0,vaBien=-1;
+function conectar(){
+ if(ws&&(ws.readyState===0||ws.readyState===1))return;
+ clearTimeout(reintento);
+ if(NUBE&&!SALA){pedirSala();return}
+ desde=Date.now();
+ if(NUBE){
+  try{ws=NubeWS()}catch(e){programar();return}
+  ws.onopen=function(){$("aviso").classList.remove("on");ultimo=Date.now();if(yo)mandar({t:"soy",nombre:yo});
+   // si en unos segundos la tele no contesta, el código no es el bueno o la tele no está esperando
+   setTimeout(function(){if(!hayLista){$("nota").innerHTML='No encuentro la sala '+SALA+'. ¿Está la tele en la pantalla «Conectad los móviles»? <a href="#" id="otrasala" style="color:#ffd166">Cambiar código</a>';
+    var a=$("otrasala");if(a)a.onclick=function(ev){ev.preventDefault();SALA="";try{ws.close()}catch(e){}$("nota").textContent="";pedirSala()}}},7000)};
+  ws.onmessage=function(ev){ultimo=Date.now();var m;try{m=JSON.parse(ev.data)}catch(e){return}recibir(m)};
+  ws.onclose=function(){$("aviso").classList.add("on");programar()};
+  ws.onerror=function(){try{ws.close()}catch(e){}};
+  return}
+ // primero por la misma puerta que la página (/ws); si no va, se alterna con el puerto de siempre
+ var modo=vaBien>=0?vaBien:(intentos%2);intentos++;
+ var url=modo===0?"ws://"+location.host+"/ws":"ws://"+location.hostname+":"+PUERTO_WS+"/";
+ try{ws=new WebSocket(url)}catch(e){programar();return}
+ ws.onopen=function(){vaBien=modo;$("aviso").classList.remove("on");ultimo=Date.now();if(yo)mandar({t:"soy",nombre:yo})};
+ ws.onmessage=function(ev){ultimo=Date.now();var m;try{m=JSON.parse(ev.data)}catch(e){return}recibir(m)};
+ ws.onclose=function(){$("aviso").classList.add("on");programar()};
+ ws.onerror=function(){try{ws.close()}catch(e){}};
+}
+function programar(){clearTimeout(reintento);reintento=setTimeout(conectar,1000)}
+var hayLista=false;
+function recibir(m){
+ if(m.t==="jugadores"){hayLista=true;$("nota").textContent=""}
+ if(m.t==="cerrado"){try{ws.close()}catch(e){}return}
+ if(m.t==="jugadores")pintarLista(m.lista);
+ else if(m.t==="eres"){yo=m.nombre;color=m.color;try{localStorage.setItem("pulsador_nombre",yo)}catch(e){}
+  $("nota").textContent="";$("yo").textContent=yo;$("bnom").textContent=yo;$("boton").style.background=color;ver("pulsar")}
+ else if(m.t==="estado"){ronda=m.ronda;ponerEstado(m.estado,m.ganador);if(!preg)ver("pulsar")}
+ else if(m.t==="pregunta"){pintarPregunta(m)}
+ else if(m.t==="respondida"){enviada("¡Respuesta enviada!","Espera a que se descubran todas")}
+ else if(m.t==="resultado"){var p=preg;preg=null;ver("preg");$("popts").style.display="none";$("pfila").style.display="none";
+  $("penv").style.display="flex";
+  if(!m.respondio){$("pgr").textContent="⏱";$("ptx").textContent="No has respondido. Era: "+m.correcta}
+  else if(m.acierto){$("pgr").textContent="🎉";$("ptx").textContent="¡Acierto! +"+m.puntos+(m.correcta?" · Era: "+m.correcta:"");
+   if(navigator.vibrate)navigator.vibrate([150,60,150])}
+  else{$("pgr").textContent="😅";$("ptx").textContent="Otra vez será. Era: "+m.correcta}
+  setTimeout(function(){if(!preg)ver("pulsar")},6000)}
+ else if(m.t==="quitado"||m.t==="error"){olvidar();$("nota").textContent=m.texto}
+}
+function olvidar(){yo=null;try{localStorage.removeItem("pulsador_nombre")}catch(e){}ver("elegir")}
+function pintarLista(l){
+ var c=$("lista");c.innerHTML="";
+ if(!l.length){c.innerHTML='<p style="text-align:center;opacity:.7">Aún no hay jugadores en la tablet</p>';return}
+ l.forEach(function(j){var b=document.createElement("button");b.className="jug";b.style.background=j.color;
+  b.innerHTML="<span></span><small></small>";b.firstChild.textContent=j.nombre;
+  b.lastChild.textContent=(j.ocupado&&j.nombre!==yo)?"ya conectado":"";
+  b.onclick=function(){mandar({t:"soy",nombre:j.nombre})};c.appendChild(b)});
+}
+var TEXTOS={espera:"Espera…",ya:"¡YA!",ganas:"¡Has sido el primero!",bloqueado:"Has fallado. Espera a la siguiente"};
+function ponerEstado(e,ganador){
+ var antes=estado;estado=e;var b=$("boton");b.className=e;
+ $("btxt").textContent=e==="otro"?("Ha pulsado "+ganador):TEXTOS[e];
+ if(e==="ganas"&&antes!=="ganas"&&navigator.vibrate)navigator.vibrate([200,80,200,80,400]);
+ if(e==="ya"&&antes!=="ya"&&navigator.vibrate)navigator.vibrate(60);
+}
+function pulsar(ev){
+ if(ev)ev.preventDefault();
+ var b=$("boton");b.classList.add("apretado");setTimeout(function(){b.classList.remove("apretado")},120);
+ if(estado==="ya")mandar({t:"pulso",ronda:ronda});
+}
+var bt=$("boton");
+if(window.PointerEvent)bt.addEventListener("pointerdown",pulsar);
+else bt.addEventListener("touchstart",pulsar,{passive:false});
+bt.addEventListener("contextmenu",function(e){e.preventDefault()});
+$("cambiar").onclick=function(){mandar({t:"suelto"});olvidar()};
+var vueltas=0;
+latido=setInterval(function(){
+ vueltas++;
+ if(ws&&ws.readyState===1){
+  if(NUBE){if(vueltas%3===0)mandar({t:"latido"})}   // por internet, cada ~10 s y sin esperar respuesta
+  else{mandar({t:"latido"});if(Date.now()-ultimo>9000){try{ws.close()}catch(e){}}}}
+ else if(ws&&ws.readyState===0&&Date.now()-desde>(NUBE?10000:6000)){try{ws.close()}catch(e){}programar()}
+},3000);
+window.addEventListener("pagehide",function(){if(NUBE&&ws&&ws.readyState===1){try{ws.close()}catch(e){}}});
+document.addEventListener("visibilitychange",function(){if(!document.hidden)conectar()});
+window.addEventListener("pageshow",conectar);
+window.addEventListener("online",conectar);
+conectar();
+})();
+</script>
+</body></html>
