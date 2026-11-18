@@ -1,6 +1,6 @@
 # Mantiene despierto el proyecto gratuito de Supabase del juego.
 # Los proyectos gratuitos se pausan tras 7 días sin actividad: esto hace una consulta
-# pequeña dos veces por semana (lunes y jueves) para que no pase.
+# pequeña (a la tabla «latido») dos veces por semana (lunes y jueves) para que no pase.
 # La clave es la pública (anon), la misma que lleva la página de los móviles.
 name: Despertar Supabase
 
@@ -21,9 +21,9 @@ jobs:
           URL: https://gafwjvioemjobhfdrtht.supabase.co
           CLAVE: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhZndqdmlvZW1qb2JoZmRydGh0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ4OTA3NDMsImV4cCI6MjExMDQ2Njc0M30.nrD6N0sWZgaHsLUcMS4k5ZUiGODl4aCxgcdk8O0D1Ws
         run: |
-          codigo=$(curl -s -o /dev/null -w '%{http_code}' "$URL/rest/v1/" -H "apikey: $CLAVE" -H "Authorization: Bearer $CLAVE")
+          codigo=$(curl -s -o /dev/null -w '%{http_code}' "$URL/rest/v1/latido?select=id" -H "apikey: $CLAVE" -H "Authorization: Bearer $CLAVE")
           echo "Respuesta de Supabase: $codigo"
-          if [ "$codigo" -ge 500 ] || [ "$codigo" = "000" ]; then
-            echo "Supabase no contesta: puede que el proyecto esté pausado. Entra en supabase.com y pulsa Restore."
+          if [ "$codigo" != "200" ]; then
+            echo "Supabase no contesta bien: puede que el proyecto esté pausado (entra en supabase.com y pulsa Restore) o que falte la tabla «latido»."
             exit 1
           fi
