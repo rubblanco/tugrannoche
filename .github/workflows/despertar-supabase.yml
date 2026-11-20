@@ -1,4 +1,4 @@
-# Mantiene despierto el proyecto gratuito de Supabase del juego.
+# Mantiene despierto el proyecto gratuito de Supabase del juego («tu-gran-noche»).
 # Los proyectos gratuitos se pausan tras 7 días sin actividad: esto hace una consulta
 # pequeña (a la tabla «latido») dos veces por semana (lunes y jueves) para que no pase.
 # La clave es la pública (anon), la misma que lleva la página de los móviles.
